@@ -113,15 +113,9 @@ def main():
 
     st.sidebar.divider()
 
-    # Tipo de valor mobiliário — toggle buttons (pills)
+    # Tipo de valor mobiliário
     tipos_vm = sorted(df["Valor_Mobiliario"].dropna().unique())
-    st.sidebar.subheader("Tipo de Valor Mobiliário")
-    sel_tipo_vm = st.sidebar.pills(
-        "Selecione os tipos",
-        tipos_vm,
-        selection_mode="multi",
-        label_visibility="collapsed",
-    )
+    sel_tipo_vm = st.sidebar.multiselect("Tipo de Valor Mobiliário", tipos_vm)
 
     st.sidebar.divider()
 
@@ -247,7 +241,7 @@ def main():
         }
         st.dataframe(
             exibicao,
-            width="stretch",
+            use_container_width=True,
             hide_index=True,
             column_config=col_config,
         )
