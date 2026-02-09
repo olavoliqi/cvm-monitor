@@ -1,12 +1,12 @@
 """
 Monitor diário de ofertas públicas CVM (Resolução 160 + ICVM 400/476).
 Baixa o CSV da CVM, filtra ofertas registradas no dia útil anterior,
-e envia resumo por e-mail via SMTP do Gmail.
+e envia resumo por e-mail via Gmail API (OAuth2).
 """
 
+import base64
 import io
 import os
-import smtplib
 import zipfile
 from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -168,13 +168,31 @@ def gerar_email_html(data_alvo: date, dist: pd.DataFrame, res160: pd.DataFrame) 
     return html
 
 
-def enviar_email(assunto: str, html: str):
-    """Envia e-mail via SMTP do Gmail."""
-    gmail_addr = os.environ.get("GMAIL_ADDRESS")
-    gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
+def obter_access_token() -> str:
+    """Obtém access token do Gmail usando refresh token via OAuth2."""
+    client_id = os.environ.get("GMAIL_CLIENT_ID")
+    client_secret = os.environ.get("GMAIL_CLIENT_SECRET")
+    refresh_token = os.environ.get("GMAIL_REFRESH_TOKEN")
 
-    if not gmail_addr or not gmail_pass:
-        print("GMAIL_ADDRESS e/ou GMAIL_APP_PASSWORD não configurados. E-mail não enviado.")
+    resp = requests.post("https://oauth2.googleapis.com/token", data={
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    })
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+def enviar_email(assunto: str, html: str):
+    """Envia e-mail via Gmail API (OAuth2)."""
+    client_id = os.environ.get("GMAIL_CLIENT_ID")
+    client_secret = os.environ.get("GMAIL_CLIENT_SECRET")
+    refresh_token = os.environ.get("GMAIL_REFRESH_TOKEN")
+    gmail_addr = os.environ.get("GMAIL_ADDRESS", "olavo@liqi.com.br")
+
+    if not all([client_id, client_secret, refresh_token]):
+        print("Credenciais OAuth2 não configuradas. E-mail não enviado.")
         print("--- Preview do e-mail ---")
         print(f"Assunto: {assunto}")
         print("(HTML omitido no preview)")
@@ -186,11 +204,16 @@ def enviar_email(assunto: str, html: str):
     msg["To"] = "olavo@liqi.com.br"
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(gmail_addr, gmail_pass)
-        server.sendmail(gmail_addr, ["olavo@liqi.com.br"], msg.as_string())
-    print("E-mail enviado com sucesso.")
+    raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+
+    access_token = obter_access_token()
+    resp = requests.post(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={"raw": raw_msg},
+    )
+    resp.raise_for_status()
+    print("E-mail enviado com sucesso via Gmail API.")
 
 
 def main():
