@@ -247,7 +247,7 @@ def main():
         }
         st.dataframe(
             exibicao,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config=col_config,
         )
