@@ -91,6 +91,18 @@ def main():
     st.title("Ofertas CVM — Resolução 160")
     st.caption("Fonte: dados.cvm.gov.br · Atualizado a cada 1 hora")
 
+    # CSS para compactar sidebar
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
+            gap: 0.35rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     df = carregar_dados()
 
     # ── Sidebar: atalho para ranking ─────────────────────────────────
@@ -101,7 +113,7 @@ def main():
     )
 
     # ── Sidebar: filtros ──────────────────────────────────────────────
-    st.sidebar.header("Filtros")
+    st.sidebar.caption("**Filtros**")
 
     # Período — dois campos separados (De / Até)
     datas_validas = df["Data_Registro"].dropna()
@@ -114,17 +126,13 @@ def main():
         data_min = date(2020, 1, 1)
         data_max = date.today()
 
-    st.sidebar.subheader("Período (Data Registro)")
-    data_de = st.sidebar.date_input("De", value=data_max, min_value=data_min, max_value=data_max, format="DD/MM/YYYY")
-    data_ate = st.sidebar.date_input("Até", value=data_max, min_value=data_min, max_value=data_max, format="DD/MM/YYYY")
-
-    st.sidebar.divider()
+    col_de, col_ate = st.sidebar.columns(2)
+    data_de = col_de.date_input("De", value=data_max, min_value=data_min, max_value=data_max, format="DD/MM/YYYY")
+    data_ate = col_ate.date_input("Até", value=data_max, min_value=data_min, max_value=data_max, format="DD/MM/YYYY")
 
     # Tipo de valor mobiliário
     tipos_vm = sorted(df["Valor_Mobiliario"].dropna().unique())
     sel_tipo_vm = st.sidebar.multiselect("Tipo de Valor Mobiliário", tipos_vm)
-
-    st.sidebar.divider()
 
     # Emissor (busca textual)
     busca_emissor = st.sidebar.text_input("Emissor (busca por nome)")
