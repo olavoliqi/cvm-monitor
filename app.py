@@ -113,7 +113,7 @@ def main():
     )
 
     # ── Sidebar: filtros ──────────────────────────────────────────────
-    st.sidebar.caption("**Filtros**")
+    st.sidebar.caption("**CVM Monitor — Filtros Abaixo:**")
 
     # Período — dois campos separados (De / Até)
     datas_validas = df["Data_Registro"].dropna()
