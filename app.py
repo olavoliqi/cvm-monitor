@@ -178,9 +178,9 @@ def main():
     st.subheader("Ofertas")
 
     colunas_exibir = [
+        "Nome_Emissor",
         "Data_requerimento",
         "Data_Registro",
-        "Nome_Emissor",
         "Valor_Mobiliario",
         "Valor_Total_Registrado",
         "Tipo_Oferta",
