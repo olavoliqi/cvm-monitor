@@ -83,6 +83,39 @@ def formatar_brl(valor) -> str:
         return "—"
 
 
+def abreviar_securitizadora(nome: str) -> str:
+    """Abrevia nome da securitizadora: 'Opea Securitizadora S.A.' → 'Opea'."""
+    if pd.isna(nome):
+        return "—"
+    n = str(nome).strip()
+    # Caso abreviado: "ECO. SEC. DTOS. CREDIT. AGRONEGÓCIOS S/A" → pegar primeira palavra
+    if re.match(r"(?i)^[\w]+\.\s+SEC\.", n):
+        return re.match(r"^([\w]+)\.", n).group(1).upper()
+    # "COMPANHIA SECURITIZADORA KANASTRA" → "KANASTRA" (nome após securitizadora)
+    m = re.match(
+        r"(?i)^(?:cia|companhia)\s+securitizadora\s+(.+?)"
+        r"(?:\s*(?:s[./]?\s*a\.?|s/a|sa))?\.?\s*$", n)
+    if m:
+        return m.group(1).strip()
+    n = re.sub(
+        r"(?i)\s*(?:\b(?:cia|companhia)\s+(?:de\s+)?securitiza[çc][ãa]o|"
+        r"\b(?:cia|companhia)\s+securitizadora|"
+        r"securitizadora\s+(?:(?:de\s+)?(?:e\s+)?[\w\s]*)?|"
+        r"securitizadora)"
+        r"[\s,]*(?:s[./]?\s*a\.?|s/a|sa)?\.?\s*$",
+        "",
+        n,
+    )
+    # Remover prefixo "CIA" residual
+    n = re.sub(r"(?i)^CIA\s+", "", n)
+    # Remover "DE SECURITIZAÇÃO" residual (usar \S para cobrir variações de encoding)
+    n = re.sub(r"(?i)\s*(?:de\s+)?securitiza\S+o\s*$", "", n)
+    # Remover sufixos residuais
+    n = re.sub(r"(?i)\s*(?:s[./]?\s*a\.?|s/a|ltda\.?)\s*$", "", n)
+    n = n.strip().strip(".").strip(",").strip()
+    return n if n else nome.strip()
+
+
 # ── Parsing de devedores ────────────────────────────────────────────────
 
 _PULVERIZADO_PATTERNS = [
@@ -800,8 +833,23 @@ def main():
                     .rename("Volume Total")
                 )
 
+                # Securitizadoras por devedor
+                securitizadoras = (
+                    df_filt.groupby("Devedor")["Emissor"]
+                    .apply(lambda x: ", ".join(
+                        sorted(set(abreviar_securitizadora(e) for e in x.dropna().unique()))
+                    ))
+                    .rename("Securitizadoras")
+                )
+
                 # Juntar tudo
-                resultado = contagem_instr.join(contagem_ano).join(total).join(vol_total)
+                resultado = (
+                    contagem_instr
+                    .join(securitizadoras)
+                    .join(contagem_ano)
+                    .join(total)
+                    .join(vol_total)
+                )
                 resultado = resultado.sort_values("Total", ascending=False)
                 resultado.index.name = "Devedor"
 
