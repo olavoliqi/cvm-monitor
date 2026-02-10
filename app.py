@@ -115,12 +115,17 @@ def main():
             padding-top: 2.5rem;
         }
         /* Compactar conteúdo principal */
+        [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > div {
+            gap: 0.2rem;
+        }
         [data-testid="stMainBlockContainer"] h1 {
             font-size: 1.5rem;
+            margin-bottom: -0.5rem;
         }
         [data-testid="stMainBlockContainer"] h2,
         [data-testid="stMainBlockContainer"] h3 {
             font-size: 1.1rem;
+            margin-bottom: -0.5rem;
         }
         [data-testid="stMainBlockContainer"] [data-testid="stMetricValue"] {
             font-size: 1.2rem;
