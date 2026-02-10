@@ -130,6 +130,9 @@ def main():
     statuses = sorted(df["Status_Requerimento"].dropna().unique())
     sel_status = st.sidebar.multiselect("Status", statuses)
 
+    st.sidebar.divider()
+    st.sidebar.markdown("[📊 Ranking de Securitizadoras](#ranking-securitizadoras)")
+
     # ── Aplicar filtros ───────────────────────────────────────────────
     mask = pd.Series(True, index=df.index)
 
@@ -289,7 +292,7 @@ def main():
 
     # ── Ranking de Securitizadoras ────────────────────────────────────
     st.divider()
-    st.subheader("Ranking de Securitizadoras — Ofertas Resolução 160")
+    st.subheader("Ranking de Securitizadoras — Ofertas Resolução 160", anchor="ranking-securitizadoras")
 
     # Filtrar apenas securitizadoras (usa df completo, sem filtros da sidebar)
     mask_sec = df["Nome_Emissor"].str.contains(
