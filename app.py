@@ -96,7 +96,16 @@ def main():
         """
         <style>
         [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
-            gap: 0.35rem;
+            gap: 0.1rem;
+        }
+        [data-testid="stSidebar"] label {
+            margin-bottom: -0.3rem;
+            font-size: 0.85rem;
+        }
+        [data-testid="stSidebar"] .stMultiSelect,
+        [data-testid="stSidebar"] .stTextInput,
+        [data-testid="stSidebar"] .stDateInput {
+            margin-bottom: -0.5rem;
         }
         </style>
         """,
