@@ -287,6 +287,52 @@ def main():
             horizontal=True,
         )
 
+    # ── Ranking de Securitizadoras ────────────────────────────────────
+    st.divider()
+    st.subheader("Ranking de Securitizadoras — Ofertas Resolução 160")
+
+    # Filtrar apenas securitizadoras (usa df completo, sem filtros da sidebar)
+    mask_sec = df["Nome_Emissor"].str.contains(
+        "securitizadora", case=False, na=False
+    )
+    df_sec = df[mask_sec].copy()
+
+    if len(df_sec) > 0:
+        df_sec["Ano"] = df_sec["Data_Registro"].dt.year
+
+        anos_disponiveis = sorted(df_sec["Ano"].dropna().unique(), reverse=True)
+        anos_disponiveis = [int(a) for a in anos_disponiveis]
+
+        ano_sel = st.selectbox("Ano", anos_disponiveis, index=0)
+
+        df_ano = df_sec[df_sec["Ano"] == ano_sel]
+
+        ranking = (
+            df_ano.groupby("Nome_Emissor", dropna=True)
+            .agg(
+                Ofertas=("Nome_Emissor", "size"),
+                Volume=("Valor_Total_Registrado", "sum"),
+            )
+            .sort_values("Ofertas", ascending=False)
+            .reset_index()
+        )
+        ranking.index = range(1, len(ranking) + 1)
+        ranking.index.name = "#"
+        ranking = ranking.rename(columns={
+            "Nome_Emissor": "Securitizadora",
+            "Volume": "Volume (R$)",
+        })
+        ranking["Volume (R$)"] = ranking["Volume (R$)"].apply(formatar_brl)
+
+        st.dataframe(ranking, use_container_width=True)
+
+        st.bar_chart(
+            ranking.set_index("Securitizadora")["Ofertas"],
+            horizontal=True,
+        )
+    else:
+        st.info("Nenhuma securitizadora encontrada nos dados.")
+
 
 if __name__ == "__main__":
     main()
