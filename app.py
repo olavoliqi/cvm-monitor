@@ -107,6 +107,10 @@ def main():
         [data-testid="stSidebar"] .stDateInput {
             margin-bottom: -0.5rem;
         }
+        /* Reduzir espaço antes do título */
+        [data-testid="stMainBlockContainer"] {
+            padding-top: 1rem;
+        }
         /* Compactar conteúdo principal */
         [data-testid="stMainBlockContainer"] h1 {
             font-size: 1.5rem;
