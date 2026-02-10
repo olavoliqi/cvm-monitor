@@ -107,6 +107,27 @@ def main():
         [data-testid="stSidebar"] .stDateInput {
             margin-bottom: -0.5rem;
         }
+        /* Compactar conteúdo principal */
+        [data-testid="stMainBlockContainer"] h1 {
+            font-size: 1.5rem;
+        }
+        [data-testid="stMainBlockContainer"] h2,
+        [data-testid="stMainBlockContainer"] h3 {
+            font-size: 1.1rem;
+        }
+        [data-testid="stMainBlockContainer"] [data-testid="stMetricValue"] {
+            font-size: 1.2rem;
+        }
+        [data-testid="stMainBlockContainer"] [data-testid="stMetricLabel"] {
+            font-size: 0.8rem;
+        }
+        [data-testid="stMainBlockContainer"] .stDataFrame {
+            font-size: 0.8rem;
+        }
+        [data-testid="stMainBlockContainer"] p,
+        [data-testid="stMainBlockContainer"] label {
+            font-size: 0.85rem;
+        }
         </style>
         """,
         unsafe_allow_html=True,
