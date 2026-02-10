@@ -93,6 +93,13 @@ def main():
 
     df = carregar_dados()
 
+    # ── Sidebar: atalho para ranking ─────────────────────────────────
+    st.sidebar.link_button(
+        "📊 Ranking de Securitizadoras",
+        url="#ranking-securitizadoras",
+        use_container_width=True,
+    )
+
     # ── Sidebar: filtros ──────────────────────────────────────────────
     st.sidebar.header("Filtros")
 
@@ -130,8 +137,6 @@ def main():
     statuses = sorted(df["Status_Requerimento"].dropna().unique())
     sel_status = st.sidebar.multiselect("Status", statuses)
 
-    st.sidebar.divider()
-    st.sidebar.markdown("[📊 Ranking de Securitizadoras](#ranking-securitizadoras)")
 
     # ── Aplicar filtros ───────────────────────────────────────────────
     mask = pd.Series(True, index=df.index)
