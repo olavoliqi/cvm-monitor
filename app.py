@@ -140,6 +140,12 @@ def main():
         [data-testid="stMainBlockContainer"] label {
             font-size: 0.85rem;
         }
+        [data-testid="stMainBlockContainer"] [data-testid="stCaptionContainer"] {
+            margin-bottom: -1rem;
+        }
+        [data-testid="stMainBlockContainer"] [data-testid="stMetric"] {
+            padding: 0;
+        }
         </style>
         """,
         unsafe_allow_html=True,
