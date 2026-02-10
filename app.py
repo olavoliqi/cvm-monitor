@@ -357,7 +357,7 @@ def main():
 
     # Filtrar apenas securitizadoras (usa df completo, sem filtros da sidebar)
     mask_sec = df["Nome_Emissor"].str.contains(
-        "securitizadora", case=False, na=False
+        "securitiz", case=False, na=False
     )
     df_sec = df[mask_sec].copy()
 
