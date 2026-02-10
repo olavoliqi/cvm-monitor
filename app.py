@@ -107,7 +107,7 @@ def main():
 
     # ── Sidebar: atalho para ranking ─────────────────────────────────
     st.sidebar.link_button(
-        "📊 Ranking de Securitizadoras",
+        "Ir para Ranking Securitizadoras",
         url="#ranking-securitizadoras",
         use_container_width=True,
     )
