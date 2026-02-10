@@ -108,8 +108,11 @@ def main():
             margin-bottom: -0.5rem;
         }
         /* Reduzir espaço antes do título */
+        header[data-testid="stHeader"] {
+            height: 2rem;
+        }
         [data-testid="stMainBlockContainer"] {
-            padding-top: 1rem;
+            padding-top: 2.5rem;
         }
         /* Compactar conteúdo principal */
         [data-testid="stMainBlockContainer"] h1 {
