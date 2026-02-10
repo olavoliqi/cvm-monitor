@@ -299,13 +299,21 @@ def main():
 
     if len(df_sec) > 0:
         df_sec["Ano"] = df_sec["Data_Registro"].dt.year
+        df_sec["_abrev_instr"] = df_sec["Valor_Mobiliario"].apply(abreviar_instrumento)
+
+        col_ano, col_instr = st.columns(2)
 
         anos_disponiveis = sorted(df_sec["Ano"].dropna().unique(), reverse=True)
         anos_disponiveis = [int(a) for a in anos_disponiveis]
+        ano_sel = col_ano.selectbox("Ano", anos_disponiveis, index=0)
 
-        ano_sel = st.selectbox("Ano", anos_disponiveis, index=0)
+        instrumentos = sorted(df_sec["_abrev_instr"].dropna().unique())
+        opcoes_instr = ["Todos"] + instrumentos
+        instr_sel = col_instr.selectbox("Instrumento", opcoes_instr, index=0)
 
         df_ano = df_sec[df_sec["Ano"] == ano_sel]
+        if instr_sel != "Todos":
+            df_ano = df_ano[df_ano["_abrev_instr"] == instr_sel]
 
         ranking = (
             df_ano.groupby("Nome_Emissor", dropna=True)
