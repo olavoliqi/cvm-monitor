@@ -686,8 +686,9 @@ def main():
             anchor="ranking-securitizadoras",
         )
 
-        mask_sec = df["Nome_Emissor"].str.contains(
-            "securitiz", case=False, na=False
+        mask_sec = (
+            df["Nome_Emissor"].str.contains("securitiz", case=False, na=False)
+            & ~df["Nome_Emissor"].str.contains("fidc", case=False, na=False)
         )
         df_sec = df[mask_sec].copy()
 
