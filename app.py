@@ -692,6 +692,10 @@ def main():
             & ~df["Nome_Emissor"].str.contains("fundo de investimento", case=False, na=False)
         )
         df_sec = df[mask_sec].copy()
+        df_sec = df_sec[
+            df_sec["Data_Registro"].notna()
+            & (df_sec["Valor_Total_Registrado"] > 0)
+        ]
 
         if len(df_sec) > 0:
             df_sec["Ano"] = df_sec["Data_Registro"].dt.year
