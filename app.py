@@ -689,6 +689,7 @@ def main():
         mask_sec = (
             df["Nome_Emissor"].str.contains("securitiz", case=False, na=False)
             & ~df["Nome_Emissor"].str.contains("fidc", case=False, na=False)
+            & ~df["Nome_Emissor"].str.contains("fundo de investimento", case=False, na=False)
         )
         df_sec = df[mask_sec].copy()
 
