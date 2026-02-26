@@ -697,7 +697,7 @@ def main():
                 abreviar_instrumento
             )
 
-            col_ano, col_instr = st.columns(2)
+            col_ano, col_instr, col_rank = st.columns(3)
 
             anos_disponiveis = sorted(
                 df_sec["Ano"].dropna().unique(), reverse=True
@@ -709,9 +709,17 @@ def main():
             opcoes_instr = ["Todos"] + instrumentos
             instr_sel = col_instr.selectbox("Instrumento", opcoes_instr, index=0)
 
+            criterio = col_rank.radio(
+                "Ordenar por",
+                ["Quantidade de Operações", "Volume"],
+                horizontal=False,
+            )
+
             df_ano = df_sec[df_sec["Ano"] == ano_sel]
             if instr_sel != "Todos":
                 df_ano = df_ano[df_ano["_abrev_instr"] == instr_sel]
+
+            sort_col = "Ofertas" if criterio == "Quantidade de Operações" else "Volume"
 
             ranking = (
                 df_ano.groupby("Nome_Emissor", dropna=True)
@@ -719,25 +727,24 @@ def main():
                     Ofertas=("Nome_Emissor", "size"),
                     Volume=("Valor_Total_Registrado", "sum"),
                 )
-                .sort_values("Ofertas", ascending=False)
+                .sort_values(sort_col, ascending=False)
                 .reset_index()
             )
             ranking.index = range(1, len(ranking) + 1)
             ranking.index.name = "#"
-            ranking = ranking.rename(
-                columns={
-                    "Nome_Emissor": "Securitizadora",
-                    "Volume": "Volume (R$)",
-                }
-            )
-            ranking["Volume (R$)"] = ranking["Volume (R$)"].apply(formatar_brl)
+            ranking = ranking.rename(columns={"Nome_Emissor": "Securitizadora"})
 
-            st.dataframe(ranking, use_container_width=True)
+            ranking["Volume (R$)"] = ranking["Volume"].apply(formatar_brl)
 
-            st.bar_chart(
-                ranking.set_index("Securitizadora")["Ofertas"],
-                horizontal=True,
+            st.dataframe(
+                ranking[["Securitizadora", "Ofertas", "Volume (R$)"]],
+                use_container_width=True,
             )
+
+            if sort_col == "Ofertas":
+                st.bar_chart(ranking.set_index("Securitizadora")["Ofertas"], horizontal=True)
+            else:
+                st.bar_chart(ranking.set_index("Securitizadora")["Volume"], horizontal=True)
         else:
             st.info("Nenhuma securitizadora encontrada nos dados.")
 
