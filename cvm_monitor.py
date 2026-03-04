@@ -155,6 +155,7 @@ def gerar_email_html(data_alvo: date, dist: pd.DataFrame, res160: pd.DataFrame) 
             ("Rito_Oferta", "Rito"),
             ("Nome_Lider", "Coordenador Líder"),
             ("Modalidade_Oferta", "Modalidade"),
+            ("Identificacao_devedores_coobrigados", "Devedores/Coobrigados"),
         ])
     else:
         html += "<p>Nenhuma outra oferta (ICVM 400/476) registrada nesta data.</p>"
@@ -201,7 +202,7 @@ def enviar_email(assunto: str, html: str):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = assunto
     msg["From"] = gmail_addr
-    msg["To"] = "olavo@liqi.com.br"
+    msg["To"] = "olavo@liqi.com.br, flavio.altimari@liqi.com.br"
     msg.attach(MIMEText(html, "html"))
 
     raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode()
