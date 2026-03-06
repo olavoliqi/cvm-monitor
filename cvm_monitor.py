@@ -140,8 +140,8 @@ def gerar_email_html(data_alvo: date, dist: pd.DataFrame, res160: pd.DataFrame) 
             ("Valor_Total_Registrado", "Valor Total"),
             ("Tipo_Oferta", "Tipo"),
             ("Nome_Lider", "Coordenador Líder"),
-            ("Status_Requerimento", "Status"),
             ("Publico_alvo", "Público-Alvo"),
+            ("Status_Requerimento", "Status"),
         ])
     else:
         html += "<p>Nenhuma oferta da Resolução 160 registrada nesta data.</p>"
