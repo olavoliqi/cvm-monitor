@@ -1,0 +1,31 @@
+name: Keepalive (anti-inatividade)
+
+# O GitHub desativa workflows agendados (cron) após 60 dias sem
+# nenhum commit no repositório. Este workflow roda 2x por mês e,
+# quando o último commit está prestes a completar o limite, faz um
+# commit automático — resetando o contador para TODOS os workflows
+# (inclusive o cvm-daily.yml e este próprio). Só commita quando
+# necessário, então não polui o histórico.
+
+on:
+  schedule:
+    # 03:00 UTC nos dias 1 e 15 de cada mês
+    - cron: '0 3 1,15 * *'
+  workflow_dispatch: # permite execução manual
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Manter workflows ativos
+        uses: gautamkrishnar/keepalive-workflow@v2
+        with:
+          # Faz o commit de manutenção se o último commit tiver
+          # mais de 45 dias (folga antes do limite de 60 do GitHub).
+          time_elapsed: '45'
