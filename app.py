@@ -17,6 +17,159 @@ CSV_NAME = "oferta_resolucao_160.csv"
 CSV_ENCODING = "latin-1"
 CSV_SEP = ";"
 
+# ── Identidade visual Liqi ──────────────────────────────────────────────
+
+# Logo oficial Liqi (versão escura, fill #212121) — usar inline, nunca placeholder
+LIQI_LOGO_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="75 170 1780 745" height="34" role="img" aria-label="Liqi Digital Assets">
+  <defs><style>.liqi{fill:#212121;}</style></defs>
+  <path class="liqi" d="M86.72,279.97c-3.33,2.71-5.31,6.74-5.39,11.03l1.46,267.51c.28,67.37,54.97,121.84,122.34,121.84h1.3c25.89.02,46.91-20.92,46.98-46.81h0c0-25.83-20.86-46.8-46.69-46.94h0c-12.98,0-23.51-10.51-23.53-23.49l-.54-203.1c0-46.48-50.16-84.1-80.29-84.1-6.52.04-10.7,0-15.63,4.05Z"/>
+  <path class="liqi" d="M344.71,679.81h0c-27.54,0-49.86-22.33-49.86-49.86h0v-230.89c0-12.14,9.84-21.99,21.99-21.99h0c42.96,0,77.79,34.83,77.79,77.79,0,.07,0,.14,0,.21v175.09c-.12,27.47-22.43,49.68-49.91,49.66Z"/>
+  <path class="liqi" d="M862.75,679.81h0c-27.54,0-49.87-22.33-49.87-49.86h0v-230.89c0-12.14,9.84-21.99,21.99-21.99h0c42.96.05,77.75,34.91,77.7,77.87,0,.04,0,.08,0,.13v175.09c-.11,27.44-22.38,49.63-49.82,49.66Z"/>
+  <path class="liqi" d="M760.74,522.86l-.13-2.17c0-85.65-69.42-155.09-155.07-155.11h-1.8c-86.62-1.79-158.28,66.98-160.07,153.59-1.75,84.66,64.02,155.43,148.58,159.89,15.25.19,30.47-1.5,45.31-5.06,8.68-1.87,18.66-4.94,23.11-6.37v42.27h0c0,4.02.53,7.9,1.42,11.64,5.85,37.13,37.88,65.56,76.66,65.61,12.14,0,21.99-9.84,21.99-21.99v-104.24c0-1.76-.1-3.5-.27-5.21.18-59.38.27-132.86.27-132.86ZM603.84,584.63h-.09c-34.3,0-62.11-27.81-62.11-62.11s27.81-62.11,62.11-62.11,62.06,27.76,62.11,62.03c.05,34.3-27.73,62.15-62.03,62.2Z"/>
+  <path class="liqi" d="M1399.58,181.15l-253.81,146.53c-23.62,13.64-38.17,38.83-38.17,66.1v293.07c0,27.27,14.55,52.47,38.17,66.1l253.81,146.53c23.62,13.64,52.71,13.63,76.33,0l127.21-73.49c11.01-6.36,17.79-18.1,17.79-30.81v-109.65c0-15.97,8.52-30.74,22.36-38.72l106.83-61.63c11.01-6.36,17.79-18.1,17.79-30.81v-160.59c0-27.27-14.55-52.47-38.17-66.1l-253.8-146.53c-23.62-13.64-52.71-13.64-76.33,0ZM1436.77,570.06v186.83c0,22.23-24.06,36.12-43.31,25.01l-161.81-93.42c-16.09-9.29-26-26.45-26-45.03v-206.83c0-18.57,9.91-35.74,26-45.03l179.13-103.42c16.09-9.29,35.9-9.29,51.99,0l161.8,93.42c19.25,11.11,19.25,38.9,0,50.02l-161.8,93.42c-16.09,9.29-25.99,26.45-25.99,45.02Z"/>
+  <path class="liqi" d="M1685.14,827.63v-108.58c0-17.11,9.13-32.92,23.95-41.48l98.21-56.7c14.28-8.24,32.13,2.06,32.13,18.55v113.41c0,17.11-9.13,32.92-23.95,41.48l-94.04,54.29c-16.14,9.32-36.3-2.33-36.3-20.96Z"/>
+</svg>
+"""
+
+# CSS com a identidade visual da Liqi (fundo claro, gradiente azul→rosa, Poppins/Inter)
+LIQI_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    --liqi-preto: #212121;
+    --liqi-azul: #0247fe;
+    --liqi-rosa: #f556e9;
+    --liqi-grad: linear-gradient(45deg, #0247fe 0%, #f556e9 100%);
+    --liqi-borda: #e8eaed;
+}
+
+html, body, .stApp, [data-testid="stAppViewContainer"], [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    color: var(--liqi-preto);
+}
+
+.stApp { background-color: #ffffff; }
+
+h1, h2, h3, h4 { font-family: 'Poppins', sans-serif !important; color: var(--liqi-preto); }
+
+/* ── Cabeçalho de marca ───────────────────────────────────────────── */
+.liqi-header {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
+}
+.liqi-header .liqi-divider {
+    width: 1px; height: 34px; background: var(--liqi-borda);
+}
+.liqi-header .liqi-titulo {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.45rem;
+    line-height: 1.1;
+    color: var(--liqi-preto);
+}
+.liqi-header .liqi-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    color: #606d7f;
+    margin-top: 1px;
+}
+.liqi-gradbar {
+    height: 4px;
+    border-radius: 4px;
+    background: var(--liqi-grad);
+    margin-bottom: 1rem;
+}
+
+/* ── Botões com gradiente da marca ────────────────────────────────── */
+.stButton > button {
+    background: var(--liqi-grad);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    transition: filter .15s ease, transform .15s ease;
+}
+.stButton > button:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.stButton > button:active, .stButton > button:focus { color: #ffffff !important; }
+
+.stDownloadButton > button {
+    background: #ffffff;
+    color: var(--liqi-azul) !important;
+    border: 1.5px solid var(--liqi-azul);
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+}
+.stDownloadButton > button:hover {
+    background: var(--liqi-azul);
+    color: #ffffff !important;
+}
+
+/* ── Métricas como cards ──────────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: #ffffff;
+    border: 1px solid var(--liqi-borda);
+    border-radius: 14px;
+    padding: 0.8rem 1.1rem !important;
+}
+[data-testid="stMetricValue"] {
+    font-family: 'Poppins', sans-serif;
+    color: var(--liqi-azul);
+}
+[data-testid="stMetricLabel"] { color: #606d7f; }
+
+/* ── Abas ─────────────────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid var(--liqi-borda); }
+.stTabs [data-baseweb="tab"] {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: #606d7f;
+}
+.stTabs [aria-selected="true"] { color: var(--liqi-azul) !important; }
+.stTabs [data-baseweb="tab-highlight"] { background: var(--liqi-grad) !important; height: 3px; }
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: #f4f6f9;
+    border-right: 1px solid var(--liqi-borda);
+}
+
+/* ── Subtítulos com leve barra de marca ───────────────────────────── */
+[data-testid="stMainBlockContainer"] h3 {
+    border-left: 3px solid;
+    border-image: var(--liqi-grad) 1;
+    padding-left: 0.55rem;
+}
+
+a { color: var(--liqi-azul); }
+hr { border-color: var(--liqi-borda); }
+
+/* ── Compactação (mantida do layout anterior) ─────────────────────── */
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div { gap: 0.1rem; }
+[data-testid="stSidebar"] label { margin-bottom: -0.3rem; font-size: 0.85rem; }
+[data-testid="stSidebar"] .stMultiSelect,
+[data-testid="stSidebar"] .stTextInput,
+[data-testid="stSidebar"] .stDateInput { margin-bottom: -0.5rem; }
+header[data-testid="stHeader"] { height: 2rem; }
+[data-testid="stMainBlockContainer"] { padding-top: 2.5rem; }
+[data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > div { gap: 0.25rem; }
+[data-testid="stMainBlockContainer"] h2,
+[data-testid="stMainBlockContainer"] h3 { font-size: 1.15rem; margin-bottom: -0.3rem; }
+[data-testid="stMainBlockContainer"] [data-testid="stMetricValue"] { font-size: 1.35rem; }
+[data-testid="stMainBlockContainer"] [data-testid="stMetricLabel"] { font-size: 0.8rem; }
+[data-testid="stMainBlockContainer"] .stDataFrame { font-size: 0.8rem; }
+[data-testid="stMainBlockContainer"] p,
+[data-testid="stMainBlockContainer"] label { font-size: 0.85rem; }
+[data-testid="stMainBlockContainer"] [data-testid="stCaptionContainer"] { margin-bottom: -0.5rem; }
+</style>
+"""
+
 
 @st.cache_data(ttl=3600, show_spinner="Baixando dados da CVM...")
 def carregar_dados() -> pd.DataFrame:
@@ -390,70 +543,26 @@ def montar_tabela_devedores(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     st.set_page_config(
-        page_title="CVM Resolução 160 — Liqi",
+        page_title="Monitor CVM — Liqi",
         page_icon="📊",
         layout="wide",
     )
 
-    st.title("Ofertas CVM — Resolução 160")
-    st.caption("Fonte: dados.cvm.gov.br · Atualizado a cada 1 hora")
+    # Identidade visual Liqi
+    st.markdown(LIQI_CSS, unsafe_allow_html=True)
 
-    # CSS para compactar sidebar
+    # Cabeçalho de marca (logo + título + barra de gradiente)
     st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
-            gap: 0.1rem;
-        }
-        [data-testid="stSidebar"] label {
-            margin-bottom: -0.3rem;
-            font-size: 0.85rem;
-        }
-        [data-testid="stSidebar"] .stMultiSelect,
-        [data-testid="stSidebar"] .stTextInput,
-        [data-testid="stSidebar"] .stDateInput {
-            margin-bottom: -0.5rem;
-        }
-        /* Reduzir espaço antes do título */
-        header[data-testid="stHeader"] {
-            height: 2rem;
-        }
-        [data-testid="stMainBlockContainer"] {
-            padding-top: 2.5rem;
-        }
-        /* Compactar conteúdo principal */
-        [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] > div {
-            gap: 0.2rem;
-        }
-        [data-testid="stMainBlockContainer"] h1 {
-            font-size: 1.5rem;
-            margin-bottom: -0.5rem;
-        }
-        [data-testid="stMainBlockContainer"] h2,
-        [data-testid="stMainBlockContainer"] h3 {
-            font-size: 1.1rem;
-            margin-bottom: -0.5rem;
-        }
-        [data-testid="stMainBlockContainer"] [data-testid="stMetricValue"] {
-            font-size: 1.2rem;
-        }
-        [data-testid="stMainBlockContainer"] [data-testid="stMetricLabel"] {
-            font-size: 0.8rem;
-        }
-        [data-testid="stMainBlockContainer"] .stDataFrame {
-            font-size: 0.8rem;
-        }
-        [data-testid="stMainBlockContainer"] p,
-        [data-testid="stMainBlockContainer"] label {
-            font-size: 0.85rem;
-        }
-        [data-testid="stMainBlockContainer"] [data-testid="stCaptionContainer"] {
-            margin-bottom: -1rem;
-        }
-        [data-testid="stMainBlockContainer"] [data-testid="stMetric"] {
-            padding: 0;
-        }
-        </style>
+        f"""
+        <div class="liqi-header">
+            {LIQI_LOGO_SVG}
+            <div class="liqi-divider"></div>
+            <div>
+                <div class="liqi-titulo">Monitor CVM — Resolução 160</div>
+                <div class="liqi-sub">Fonte: dados.cvm.gov.br · Atualizado a cada 1 hora</div>
+            </div>
+        </div>
+        <div class="liqi-gradbar"></div>
         """,
         unsafe_allow_html=True,
     )
