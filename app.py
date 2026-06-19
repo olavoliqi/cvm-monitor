@@ -552,20 +552,18 @@ def main():
     st.markdown(LIQI_CSS, unsafe_allow_html=True)
 
     # Cabeçalho de marca (logo + título + barra de gradiente)
-    st.markdown(
-        f"""
-        <div class="liqi-header">
-            {LIQI_LOGO_SVG}
-            <div class="liqi-divider"></div>
-            <div>
-                <div class="liqi-titulo">Monitor CVM — Resolução 160</div>
-                <div class="liqi-sub">Fonte: dados.cvm.gov.br · Atualizado a cada 1 hora</div>
-            </div>
-        </div>
-        <div class="liqi-gradbar"></div>
-        """,
-        unsafe_allow_html=True,
+    # IMPORTANTE: sem indentação no HTML — 4+ espaços viram bloco de código no Markdown
+    header_html = (
+        '<div class="liqi-header">'
+        + LIQI_LOGO_SVG
+        + '<div class="liqi-divider"></div>'
+        + '<div>'
+        + '<div class="liqi-titulo">Monitor CVM — Resolução 160</div>'
+        + '<div class="liqi-sub">Fonte: dados.cvm.gov.br · Atualizado a cada 1 hora</div>'
+        + '</div></div>'
+        + '<div class="liqi-gradbar"></div>'
     )
+    st.markdown(header_html, unsafe_allow_html=True)
 
     df = carregar_dados()
 
