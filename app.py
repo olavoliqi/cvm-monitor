@@ -538,6 +538,48 @@ def montar_tabela_devedores(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def tabela_recorrencia(
+    df_in: pd.DataFrame,
+    entity_col: str,
+    ano_col: str = "Ano",
+    valor_col: str = "Valor",
+) -> pd.DataFrame:
+    """Monta tabela entidade × ano (contagem) + Total + Volume.
+
+    Usada na aba de Coordenadores para cruzar securitizadoras/devedores
+    com o coordenador líder ao longo dos anos.
+    """
+    total = df_in.groupby(entity_col).size().rename("Total")
+    volume = df_in.groupby(entity_col)[valor_col].sum().rename("Volume")
+
+    base = df_in.dropna(subset=[ano_col]).copy()
+    if len(base) > 0:
+        base[ano_col] = base[ano_col].astype(int)
+        cont_ano = base.groupby([entity_col, ano_col]).size().unstack(fill_value=0)
+        cont_ano = cont_ano[sorted(cont_ano.columns)]
+    else:
+        cont_ano = pd.DataFrame(index=total.index)
+
+    res = total.to_frame().join(cont_ano).fillna(0).join(volume)
+    year_cols = [c for c in res.columns if c not in ("Total", "Volume")]
+    res = res[year_cols + ["Total", "Volume"]]
+    for c in year_cols + ["Total"]:
+        res[c] = res[c].astype(int)
+    res = res.sort_values("Total", ascending=False)
+    res.index.name = entity_col
+    return res
+
+
+def formatar_recorrencia(res: pd.DataFrame) -> pd.DataFrame:
+    """Prepara a tabela de recorrência para exibição (volume em BRL, anos como texto)."""
+    exib = res.reset_index().copy()
+    if "Volume" in exib.columns:
+        exib["Volume (R$)"] = exib["Volume"].apply(formatar_brl)
+        exib = exib.drop(columns=["Volume"])
+    rename = {c: str(int(c)) for c in exib.columns if isinstance(c, (int, float))}
+    return exib.rename(columns=rename)
+
+
 # ── Interface ───────────────────────────────────────────────────────────
 
 
@@ -573,6 +615,8 @@ def main():
         st.session_state._scroll_to = "ranking-securitizadoras"
     if st.sidebar.button("Ir para Devedores CRI/CRA", use_container_width=True):
         st.session_state._switch_tab = "Devedores CRI/CRA"
+    if st.sidebar.button("Ir para Coordenadores", use_container_width=True):
+        st.session_state._switch_tab = "Coordenadores"
 
     st.sidebar.caption("**Filtros — Ofertas:**")
 
@@ -606,7 +650,9 @@ def main():
     sel_status = st.sidebar.multiselect("Status", statuses)
 
     # ── Tabs ────────────────────────────────────────────────────────────
-    tab_ofertas, tab_devedores = st.tabs(["Ofertas", "Devedores CRI/CRA"])
+    tab_ofertas, tab_devedores, tab_coord = st.tabs(
+        ["Ofertas", "Devedores CRI/CRA", "Coordenadores"]
+    )
 
     # Trocar aba e/ou scroll via JavaScript quando botão da sidebar é clicado
     _target_tab = st.session_state.pop("_switch_tab", None)
@@ -1051,6 +1097,127 @@ def main():
                         use_container_width=True,
                         hide_index=True,
                     )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # TAB 3 — Coordenadores Líderes
+    # ═══════════════════════════════════════════════════════════════════
+    with tab_coord:
+        st.subheader("Análise por Coordenador Líder", anchor="coordenadores")
+        st.caption(
+            "Relaciona as securitizadoras e os devedores que trabalharam com "
+            "cada coordenador líder, por ano. Os devedores são extraídos "
+            "automaticamente apenas de ofertas de CRI / CRA / CR."
+        )
+
+        lideres_disp = df["Nome_Lider"].dropna()
+        if len(lideres_disp) == 0:
+            st.info("Nenhum coordenador líder encontrado nos dados.")
+        else:
+            # Coordenadores ordenados por nº de ofertas (mais ativos primeiro)
+            ordem_lideres = df["Nome_Lider"].value_counts().index.tolist()
+
+            col_c1, col_c2 = st.columns([2, 1])
+            lider_sel = col_c1.selectbox(
+                "Coordenador Líder", ordem_lideres, key="coord_lider"
+            )
+
+            df_lider = df[df["Nome_Lider"] == lider_sel].copy()
+            df_lider["Ano"] = df_lider["Data_Registro"].dt.year
+
+            anos_l = sorted(
+                df_lider["Ano"].dropna().astype(int).unique(), reverse=True
+            )
+            anos_sel = col_c2.multiselect(
+                "Ano", anos_l, default=anos_l, key="coord_anos"
+            )
+            if anos_sel:
+                df_lider = df_lider[df_lider["Ano"].isin(anos_sel)]
+
+            incluir_pulv = st.checkbox(
+                "Incluir lastro pulverizado na lista de devedores",
+                value=False,
+                key="coord_pulv",
+            )
+
+            # ── Securitizadoras parceiras ───────────────────────────────
+            mask_sec_l = (
+                df_lider["Nome_Emissor"].str.contains("securitiz", case=False, na=False)
+                & ~df_lider["Nome_Emissor"].str.contains("fidc", case=False, na=False)
+                & ~df_lider["Nome_Emissor"].str.contains(
+                    "fundo de investimento", case=False, na=False
+                )
+            )
+            df_sec_l = df_lider[mask_sec_l].copy()
+            df_sec_l["Securitizadora"] = df_sec_l["Nome_Emissor"].apply(
+                abreviar_securitizadora
+            )
+            df_sec_l = df_sec_l.rename(columns={"Valor_Total_Registrado": "Valor"})
+
+            # ── Devedores associados ────────────────────────────────────
+            df_dev_all = montar_tabela_devedores(df)
+            df_dev_l = df_dev_all[df_dev_all["Coord_Lider"] == lider_sel].copy()
+            if anos_sel:
+                df_dev_l = df_dev_l[df_dev_l["Ano"].isin(anos_sel)]
+            if not incluir_pulv:
+                df_dev_l = df_dev_l[df_dev_l["Devedor"] != "PULVERIZADO"]
+
+            # ── Métricas ────────────────────────────────────────────────
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Ofertas", f"{len(df_lider):,}".replace(",", "."))
+            m2.metric(
+                "Volume total",
+                formatar_brl(df_lider["Valor_Total_Registrado"].sum()),
+            )
+            m3.metric(
+                "Securitizadoras",
+                f"{df_sec_l['Securitizadora'].nunique():,}".replace(",", "."),
+            )
+            m4.metric(
+                "Devedores identificados",
+                f"{df_dev_l['Devedor'].nunique():,}".replace(",", "."),
+            )
+
+            nome_arquivo = re.sub(r"[^\w]+", "_", str(lider_sel))[:30].strip("_")
+
+            # ── Securitizadoras por ano ─────────────────────────────────
+            st.subheader("Securitizadoras parceiras")
+            if len(df_sec_l) > 0:
+                rec_sec = tabela_recorrencia(df_sec_l, "Securitizadora")
+                exib_sec = formatar_recorrencia(rec_sec)
+                st.dataframe(exib_sec, use_container_width=True, hide_index=True)
+                st.download_button(
+                    "Baixar CSV securitizadoras",
+                    data=exib_sec.to_csv(index=False, sep=";").encode("utf-8-sig"),
+                    file_name=f"securitizadoras_{nome_arquivo}.csv",
+                    mime="text/csv",
+                    key="dl_coord_sec",
+                )
+                st.bar_chart(rec_sec.head(15)["Total"], horizontal=True)
+            else:
+                st.info(
+                    "Nenhuma securitizadora associada a este coordenador no período."
+                )
+
+            # ── Devedores por ano ───────────────────────────────────────
+            st.subheader("Devedores (CRI / CRA / CR)")
+            if len(df_dev_l) > 0:
+                rec_dev = tabela_recorrencia(df_dev_l, "Devedor")
+                exib_dev = formatar_recorrencia(rec_dev)
+                st.dataframe(
+                    exib_dev, use_container_width=True, hide_index=True, height=500
+                )
+                st.download_button(
+                    "Baixar CSV devedores",
+                    data=exib_dev.to_csv(index=False, sep=";").encode("utf-8-sig"),
+                    file_name=f"devedores_{nome_arquivo}.csv",
+                    mime="text/csv",
+                    key="dl_coord_dev",
+                )
+                st.bar_chart(rec_dev.head(20)["Total"], horizontal=True)
+            else:
+                st.info(
+                    "Nenhum devedor identificado para este coordenador no período."
+                )
 
 
 if __name__ == "__main__":
