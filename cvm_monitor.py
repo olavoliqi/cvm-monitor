@@ -7,6 +7,7 @@ e envia resumo por e-mail via Gmail API (OAuth2).
 import base64
 import io
 import os
+import socket
 import zipfile
 from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -14,6 +15,12 @@ from email.mime.text import MIMEText
 
 import pandas as pd
 import requests
+import urllib3.util.connection as urllib3_cn
+
+# O servidor da CVM é dual-stack e responde com um IPv6 brasileiro (bloco 2804::)
+# que os runners do GitHub Actions não conseguem rotear ("[Errno 101] Network is
+# unreachable"). Forçamos IPv4 para que o download funcione em qualquer ambiente.
+urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
 
 CVM_URL = "https://dados.cvm.gov.br/dados/OFERTA/DISTRIB/DADOS/oferta_distribuicao.zip"
 CSV_ENCODING = "latin-1"
@@ -66,8 +73,18 @@ def dia_util_anterior(ref: date = None) -> date:
 def baixar_csvs() -> dict[str, pd.DataFrame]:
     """Baixa o ZIP da CVM e retorna dict com DataFrames dos CSVs."""
     print(f"Baixando {CVM_URL} ...")
-    resp = requests.get(CVM_URL, timeout=60)
-    resp.raise_for_status()
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; cvm-monitor/1.0)"}
+    ultimo_erro = None
+    for tentativa in range(1, 4):
+        try:
+            resp = requests.get(CVM_URL, timeout=60, headers=headers)
+            resp.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            ultimo_erro = e
+            print(f"  tentativa {tentativa}/3 falhou: {e}")
+    else:
+        raise ultimo_erro
 
     dfs = {}
     with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
