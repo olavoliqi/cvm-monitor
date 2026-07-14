@@ -57,6 +57,25 @@ GMAIL_REFRESH_TOKEN=...
 - Atualizado a cada hora pela CVM
 - Encoding: latin-1 · Separador: ;
 
+## ⚠️ IMPORTANTE — IPv4 obrigatório no download
+O `dados.cvm.gov.br` é dual-stack e responde com um IPv6 brasileiro (bloco
+`2804::`) que hosts fora do Brasil (GitHub Actions, Streamlit Cloud) NÃO
+conseguem rotear → `[Errno 101] Network is unreachable`. Por isso, tanto
+`cvm_monitor.py` quanto `app.py` forçam IPv4 no import:
+```python
+import socket, urllib3.util.connection as urllib3_cn
+urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
+```
+NÃO remover essas linhas — sem elas o robô e o dashboard voltam a quebrar
+em qualquer ambiente hospedado fora do Brasil.
+
+## ⚠️ Não arquivar o repositório no GitHub
+Arquivar o repo o deixa read-only, DESATIVA os workflows agendados
+(aparecem como `disabled_manually`) e derruba o robô diário. O dashboard
+Streamlit também dorme. Se precisar reativar: `gh api -X PATCH
+repos/olavoliqi/cvm-monitor -f archived=false`, depois `gh workflow enable`
+nos dois workflows e reboot do app no painel do Streamlit.
+
 ## Workflow para editar e publicar
 ```bash
 # Editar arquivos em C:/Users/Olavo/cvm-monitor
