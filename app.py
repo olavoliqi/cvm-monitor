@@ -6,6 +6,7 @@ Permite consulta do histórico completo com filtros por período e outros campos
 import io
 import re
 import socket
+import time
 import zipfile
 
 import pandas as pd
@@ -183,13 +184,15 @@ def carregar_dados() -> pd.DataFrame:
     """Baixa o ZIP da CVM e retorna o DataFrame da Resolução 160."""
     headers = {"User-Agent": "Mozilla/5.0 (compatible; cvm-monitor/1.0)"}
     ultimo_erro = None
-    for tentativa in range(1, 4):
+    for tentativa in range(1, 6):  # 5 tentativas com espera progressiva
         try:
             resp = requests.get(CVM_URL, timeout=60, headers=headers)
             resp.raise_for_status()
             break
         except requests.exceptions.RequestException as e:
             ultimo_erro = e
+            if tentativa < 5:
+                time.sleep(2 * tentativa)  # 2s, 4s, 6s, 8s
     else:
         raise ultimo_erro
 
@@ -623,7 +626,22 @@ def main():
     )
     st.markdown(header_html, unsafe_allow_html=True)
 
-    df = carregar_dados()
+    # A CVM (gov.br) é instável e às vezes recusa a conexão. Se o download
+    # falhar, degradar com uma tela de "tentar de novo" em vez de derrubar o app.
+    try:
+        df = carregar_dados()
+    except Exception as e:
+        st.error(
+            "Não foi possível baixar os dados da CVM neste momento. "
+            "O servidor de dados abertos da CVM (dados.cvm.gov.br) está "
+            "temporariamente indisponível ou instável. Tente novamente em alguns instantes."
+        )
+        with st.expander("Detalhe técnico"):
+            st.code(f"{type(e).__name__}: {e}")
+        if st.button("🔄 Tentar novamente"):
+            st.cache_data.clear()
+            st.rerun()
+        st.stop()
 
     # ── Sidebar ─────────────────────────────────────────────────────────
     if st.sidebar.button("Ir para Ranking Securitizadoras", use_container_width=True):
