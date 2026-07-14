@@ -5,12 +5,19 @@ Permite consulta do histórico completo com filtros por período e outros campos
 
 import io
 import re
+import socket
 import zipfile
 
 import pandas as pd
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
+import urllib3.util.connection as urllib3_cn
+
+# O servidor da CVM é dual-stack e responde com um IPv6 brasileiro (bloco 2804::)
+# que hosts fora do Brasil (Streamlit Cloud, GitHub Actions) não conseguem rotear
+# ("[Errno 101] Network is unreachable"). Forçamos IPv4 para o download funcionar.
+urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
 
 CVM_URL = "https://dados.cvm.gov.br/dados/OFERTA/DISTRIB/DADOS/oferta_distribuicao.zip"
 CSV_NAME = "oferta_resolucao_160.csv"
@@ -174,8 +181,17 @@ header[data-testid="stHeader"] { height: 2rem; }
 @st.cache_data(ttl=3600, show_spinner="Baixando dados da CVM...")
 def carregar_dados() -> pd.DataFrame:
     """Baixa o ZIP da CVM e retorna o DataFrame da Resolução 160."""
-    resp = requests.get(CVM_URL, timeout=60)
-    resp.raise_for_status()
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; cvm-monitor/1.0)"}
+    ultimo_erro = None
+    for tentativa in range(1, 4):
+        try:
+            resp = requests.get(CVM_URL, timeout=60, headers=headers)
+            resp.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            ultimo_erro = e
+    else:
+        raise ultimo_erro
 
     with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
         with z.open(CSV_NAME) as f:
