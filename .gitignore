@@ -2,3 +2,6 @@ credentials.json
 .env
 __pycache__/
 .streamlit/secrets.toml
+.venv/
+preview_*.html
+cvm_preview*.html

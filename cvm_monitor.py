@@ -5,8 +5,10 @@ e envia resumo por e-mail via Gmail API (OAuth2).
 """
 
 import base64
+import html as html_lib
 import io
 import os
+import re
 import socket
 import zipfile
 from datetime import date, timedelta
@@ -124,65 +126,306 @@ def formatar_valor(valor) -> str:
         return str(valor) if pd.notna(valor) else "—"
 
 
-def gerar_tabela_html(df: pd.DataFrame, colunas: list[tuple[str, str]]) -> str:
-    """Gera tabela HTML a partir do DataFrame com as colunas especificadas."""
-    header = "".join(f"<th style='padding:8px;border:1px solid #ddd;background:#f4f4f4;text-align:left'>{label}</th>" for _, label in colunas)
-    rows = ""
-    for _, row in df.iterrows():
-        cells = ""
-        for col, _ in colunas:
-            val = row.get(col, "—")
-            if "valor" in col.lower() or "total" in col.lower():
-                val = formatar_valor(val)
-            else:
-                val = str(val) if pd.notna(val) else "—"
-            cells += f"<td style='padding:8px;border:1px solid #ddd'>{val}</td>"
-        rows += f"<tr>{cells}</tr>"
-    return f"<table style='border-collapse:collapse;width:100%;font-size:14px'><tr>{header}</tr>{rows}</table>"
+#: Campos de texto livre (devedores, lastro, destinação, garantias). A CVM
+#: preenche esses campos com parágrafos inteiros (chegam a 3.000+ caracteres),
+#: então são truncados antes de entrar no e-mail.
+CAMPOS_LONGOS = {
+    "Identificacao_devedores_coobrigados",
+    "Descricao_lastro",
+    "Destinacao_recursos",
+    "Descricao_garantias",
+    "Ativos_alvo",
+}
+
+#: Limite de caracteres por célula nos campos longos. Não aumentar muito: o
+#: Gmail corta ("mensagem truncada") mensagens acima de ~102 KB.
+MAX_CHARS_CAMPO_LONGO = 400
+
+#: Colunas com valor monetário que passam por formatar_valor().
+CAMPOS_VALOR = {
+    "Valor_Total_Registrado",
+    "Valor_Total",
+    "Preco_Unitario",
+}
+
+#: Colunas booleanas S/N da CVM, traduzidas para Sim/Não.
+MAPA_SN = {"S": "Sim", "N": "Não"}
+
+#: Colunas de data, que saem no formato dd/mm/aaaa.
+CAMPOS_DATA = {
+    "Data_Emissao",
+    "Data_Vencimento",
+    "Data_Registro",
+    "Data_Registro_Oferta",
+    "Data_Inicio_Oferta",
+    "Data_Encerramento_Oferta",
+    "Data_deliberacao_aprovou_oferta",
+}
+
+#: Colunas de contagem/quantidade. O pandas as lê como float; sem isso
+#: sairiam no e-mail como "99.0" em vez de "99".
+CAMPOS_INTEIROS = {
+    "Emissao",
+    "Serie",
+    "Quantidade_Total",
+    "Qtde_Total_Registrada",
+    "Quantidade_Sem_Lote_Suplementar",
+    "Quantidade_No_Lote_Suplementar",
+}
+
+
+def limpar_texto(valor, max_chars: int = MAX_CHARS_CAMPO_LONGO) -> str:
+    """Normaliza espaços/quebras de linha e trunca texto livre da CVM."""
+    if pd.isna(valor):
+        return "—"
+    texto = re.sub(r"\s+", " ", str(valor)).strip()
+    if not texto or texto.lower() in {"nan", "none"}:
+        return "—"
+    if len(texto) > max_chars:
+        texto = texto[:max_chars].rstrip() + "…"
+    return texto
+
+
+def formatar_celula(col: str, valor) -> str:
+    """Aplica a formatação adequada ao valor de acordo com a coluna."""
+    if col in CAMPOS_LONGOS:
+        return limpar_texto(valor)
+    if pd.isna(valor):
+        return "—"
+    if col in CAMPOS_VALOR:
+        return formatar_valor(valor)
+    if col in CAMPOS_DATA:
+        d = pd.to_datetime(valor, errors="coerce")
+        if pd.notna(d):
+            return d.strftime("%d/%m/%Y")
+    if col in CAMPOS_INTEIROS:
+        try:
+            return f"{int(float(valor)):,}".replace(",", ".")
+        except (ValueError, TypeError, OverflowError):
+            pass
+    texto = re.sub(r"\s+", " ", str(valor)).strip()
+    # Rede de segurança para as demais colunas numéricas: o pandas lê
+    # inteiros como float, então "99.0" volta a ser "99".
+    if re.fullmatch(r"-?\d+\.0", texto):
+        texto = texto[:-2]
+    if not texto or texto.lower() in {"nan", "none"}:
+        return "—"
+    if texto.upper() in MAPA_SN and len(texto) == 1:
+        return MAPA_SN[texto.upper()]
+    return texto
+
+
+# Estilos reaproveitados pelas tabelas do e-mail. Tudo inline: clientes de
+# e-mail ignoram <style> em boa parte dos casos.
+_TH = (
+    "padding:7px 9px;border:1px solid #d8dce3;background:#212121;color:#ffffff;"
+    "text-align:left;vertical-align:top;font-weight:600;font-size:11px;"
+    "text-transform:uppercase"
+)
+_TD = "padding:7px 9px;border:1px solid #d8dce3;vertical-align:top;word-break:break-word"
+_TD_DET = (
+    "padding:9px 10px;border:1px solid #d8dce3;border-top:0;background:#f7f8fa;"
+    "vertical-align:top;word-break:break-word;font-size:11.5px;line-height:1.5"
+)
+
+
+def gerar_tabela_html(
+    df: pd.DataFrame,
+    colunas: list,
+    detalhes: list = None,
+) -> str:
+    """Gera a tabela HTML do e-mail.
+
+    ``colunas`` são os campos curtos, que viram colunas de verdade.
+    ``detalhes`` são os campos descritivos (texto livre da CVM e prestadores):
+    cada oferta ganha uma segunda linha, em colspan, com esses campos
+    rotulados. Sem isso a tabela ficaria com mais de 20 colunas e estouraria a
+    largura em qualquer cliente de e-mail.
+    """
+    detalhes = detalhes or []
+    header = "".join(
+        "<th style='%s'>%s</th>" % (_TH, html_lib.escape(label, quote=False))
+        for _, label in colunas
+    )
+
+    linhas = ""
+    for i, (_, row) in enumerate(df.iterrows()):
+        fundo = "#ffffff" if i % 2 == 0 else "#fbfbfc"
+        cells = "".join(
+            "<td style='%s;background:%s'>%s</td>"
+            % (_TD, fundo, html_lib.escape(formatar_celula(col, row.get(col)), quote=False))
+            for col, _ in colunas
+        )
+        linhas += "<tr>%s</tr>" % cells
+
+        if detalhes:
+            partes = []
+            for col, label in detalhes:
+                if col not in df.columns:
+                    continue
+                val = formatar_celula(col, row.get(col))
+                if val == "—":
+                    continue
+                partes.append(
+                    "<span style='color:#0247fe;font-weight:600'>%s:</span> %s"
+                    % (html_lib.escape(label, quote=False), html_lib.escape(val, quote=False))
+                )
+            corpo = "<br>".join(partes) if partes else (
+                "<span style='color:#999999'>Sem informações adicionais na "
+                "base da CVM.</span>"
+            )
+            linhas += "<tr><td colspan='%d' style='%s'>%s</td></tr>" % (
+                len(colunas), _TD_DET, corpo
+            )
+
+    return (
+        "<table role='presentation' cellpadding='0' cellspacing='0' "
+        "style='border-collapse:collapse;width:100%;font-size:12px;line-height:1.45;"
+        "font-family:Arial,Helvetica,sans-serif;color:#212121'>"
+        "<tr>" + header + "</tr>" + linhas + "</table>"
+    )
+
+
+#: Colunas curtas da tabela de ofertas da Resolução 160.
+COLS_RES160 = [
+    ("Nome_Emissor", "Emissor"),
+    ("Valor_Mobiliario", "Valor Mobiliário"),
+    ("Tipo_Oferta", "Tipo de Oferta"),
+    ("Valor_Total_Registrado", "Valor Total"),
+    ("Publico_alvo", "Público-Alvo"),
+    ("Rito_Requerimento", "Rito"),
+    ("Regime_distribuicao", "Regime de Distribuição"),
+    ("Status_Requerimento", "Status"),
+]
+
+#: Campos que vão na linha de detalhe de cada oferta da Resolução 160.
+DET_RES160 = [
+    ("Nome_Lider", "Coordenador líder"),
+    ("Regime_fiduciario", "Regime fiduciário"),
+    ("Tipo_lastro", "Tipo de lastro"),
+    ("Identificacao_devedores_coobrigados", "Devedores/coobrigados"),
+    ("Descricao_lastro", "Lastro"),
+    ("Ativos_alvo", "Ativos-alvo"),
+    ("Destinacao_recursos", "Destinação dos recursos"),
+    ("Descricao_garantias", "Garantias"),
+    ("Possibilidade_revolvencia", "Revolvência"),
+    ("Titulo_incentivado", "Título incentivado"),
+    ("Titulo_classificado_como_sustentavel", "Título sustentável"),
+    ("Mercado_negociacao", "Mercado de negociação"),
+    ("Agente_fiduciario", "Agente fiduciário"),
+    ("Administrador", "Administrador"),
+    ("Gestor", "Gestor"),
+    ("Escriturador", "Escriturador"),
+    ("Custodiante", "Custodiante"),
+    ("Avaliador_Risco", "Agência de rating"),
+]
+
+#: Colunas curtas da tabela de ofertas ICVM 400/476.
+COLS_DIST = [
+    ("Nome_Emissor", "Emissor"),
+    ("Tipo_Ativo", "Tipo de Ativo"),
+    ("Valor_Total", "Valor Total"),
+    ("Rito_Oferta", "Rito"),
+    ("Modalidade_Oferta", "Modalidade"),
+    ("Oferta_Regime_Fiduciario", "Regime Fiduciário"),
+]
+
+#: Campos que vão na linha de detalhe de cada oferta ICVM 400/476.
+DET_DIST = [
+    ("Nome_Lider", "Coordenador líder"),
+    ("Nome_Ofertante", "Ofertante"),
+    ("Classe_Ativo", "Classe do ativo"),
+    ("Especie_Ativo", "Espécie"),
+    ("Forma_Ativo", "Forma"),
+    ("Emissao", "Emissão"),
+    ("Serie", "Série"),
+    ("Quantidade_Total", "Quantidade total"),
+    ("Preco_Unitario", "Preço unitário"),
+    ("Data_Emissao", "Data de emissão"),
+    ("Data_Vencimento", "Vencimento"),
+    ("Atualizacao_Monetaria", "Atualização monetária"),
+    ("Juros", "Juros"),
+    ("Oferta_Incentivo_Fiscal", "Incentivo fiscal"),
+    ("Tipo_Fundo_Investimento", "Tipo de fundo"),
+    ("Modalidade_Registro", "Modalidade de registro"),
+    ("Modalidade_Dispensa_Registro", "Dispensa de registro"),
+]
 
 
 def gerar_email_html(data_alvo: date, dist: pd.DataFrame, res160: pd.DataFrame) -> str:
     """Gera o corpo HTML do e-mail."""
     data_fmt = data_alvo.strftime("%d/%m/%Y")
-    html = f"""
-    <html><body style='font-family:Arial,sans-serif;color:#333'>
-    <h2>Ofertas Públicas CVM — {data_fmt}</h2>
-    """
+    total = len(dist) + len(res160)
+    html = (
+        "<html><body style='margin:0;padding:0;background:#f2f3f5'>"
+        "<div style='max-width:1100px;margin:0 auto;padding:22px 18px;"
+        "font-family:Arial,Helvetica,sans-serif;color:#212121'>"
+        "<div style='background:#212121;border-radius:8px 8px 0 0;padding:16px 18px'>"
+        "<div style='height:3px;width:64px;background:#0247fe;"
+        "background-image:linear-gradient(45deg,#0247fe,#f556e9);margin-bottom:10px;"
+        "font-size:0;line-height:0'>&nbsp;</div>"
+        "<div style='color:#ffffff;font-size:18px;font-weight:700'>CVM Monitor</div>"
+        "<div style='color:#b9bec7;font-size:12.5px;margin-top:3px'>"
+        "Ofertas públicas registradas em " + data_fmt + " · "
+        + str(total) + " oferta(s)</div>"
+        "</div>"
+        "<div style='background:#ffffff;border:1px solid #e2e5ea;border-top:0;"
+        "border-radius:0 0 8px 8px;padding:18px'>"
+    )
 
     if len(res160) > 0:
-        html += f"<h3>Resolução 160 ({len(res160)} ofertas)</h3>"
-        html += gerar_tabela_html(res160, [
-            ("Nome_Emissor", "Emissor"),
-            ("Valor_Mobiliario", "Valor Mobiliário"),
-            ("Valor_Total_Registrado", "Valor Total"),
-            ("Tipo_Oferta", "Tipo"),
-            ("Nome_Lider", "Coordenador Líder"),
-            ("Publico_alvo", "Público-Alvo"),
-            ("Status_Requerimento", "Status"),
-        ])
+        html += (
+            "<h3 style='margin:0 0 4px;font-size:14px'>Resolução CVM 160 ("
+            + str(len(res160)) + " oferta(s))</h3>"
+            "<p style='margin:0 0 10px;font-size:11.5px;color:#666666'>"
+            "A faixa cinza abaixo de cada oferta traz os campos descritivos: devedores/"
+            "coobrigados, lastro, destinação de recursos, garantias e "
+            "prestadores de serviço.</p>"
+        )
+        html += gerar_tabela_html(res160, COLS_RES160, DET_RES160)
+        html += (
+            "<p style='font-size:11px;color:#888888;margin:8px 0 22px'>"
+            "Devedores/coobrigados, lastro, destinação de recursos e garantias "
+            "são texto livre preenchido pelo emissor e vêm truncados em "
+            + str(MAX_CHARS_CAMPO_LONGO) + " caracteres. Campos vazios na base da CVM "
+            "são omitidos. Texto integral no dashboard.</p>"
+        )
     else:
-        html += "<p>Nenhuma oferta da Resolução 160 registrada nesta data.</p>"
+        html += (
+            "<p style='font-size:13px'>Nenhuma oferta da Resolução 160 "
+            "registrada nesta data.</p>"
+        )
 
     if len(dist) > 0:
-        html += f"<h3>Demais Ofertas — ICVM 400 / ICVM 476 ({len(dist)} ofertas)</h3>"
-        html += gerar_tabela_html(dist, [
-            ("Nome_Emissor", "Emissor"),
-            ("Tipo_Ativo", "Tipo de Ativo"),
-            ("Valor_Total", "Valor Total"),
-            ("Rito_Oferta", "Rito"),
-            ("Nome_Lider", "Coordenador Líder"),
-            ("Modalidade_Oferta", "Modalidade"),
-            ("Identificacao_devedores_coobrigados", "Devedores/Coobrigados"),
-        ])
+        html += (
+            "<h3 style='margin:0 0 8px;font-size:14px'>Demais ofertas — ICVM 400 / "
+            "ICVM 476 (" + str(len(dist)) + " oferta(s))</h3>"
+        )
+        html += gerar_tabela_html(dist, COLS_DIST, DET_DIST)
+        # O dataset oferta_distribuicao.csv não traz público-alvo, regime de
+        # distribuição, devedores/coobrigados, lastro, destinação de recursos nem
+        # garantias: esses campos só existem no oferta_resolucao_160.csv.
+        html += (
+            "<p style='font-size:11px;color:#888888;margin:8px 0 0'>"
+            "Público-alvo, regime de distribuição, devedores/coobrigados, "
+            "lastro, destinação de recursos e garantias não são "
+            "divulgados pela CVM para ofertas ICVM 400/476: esses campos existem apenas "
+            "na base da Resolução 160.</p>"
+        )
     else:
-        html += "<p>Nenhuma outra oferta (ICVM 400/476) registrada nesta data.</p>"
+        html += (
+            "<p style='font-size:13px'>Nenhuma outra oferta (ICVM 400/476) registrada "
+            "nesta data.</p>"
+        )
 
-    html += """
-    <br><p style='font-size:12px;color:#888'>
-    Fonte: <a href='https://dados.cvm.gov.br/dataset/oferta-distribuicao'>dados.cvm.gov.br</a>
-    — Gerado automaticamente pelo CVM Monitor.
-    </p></body></html>
-    """
+    html += (
+        "<p style='font-size:11px;color:#888888;margin:22px 0 0;"
+        "border-top:1px solid #e2e5ea;padding-top:12px'>Fonte: "
+        "<a href='https://dados.cvm.gov.br/dataset/oferta-distribuicao' "
+        "style='color:#0247fe'>dados.cvm.gov.br</a> · Gerado automaticamente pelo "
+        "CVM Monitor.</p>"
+        "</div></div></body></html>"
+    )
     return html
 
 

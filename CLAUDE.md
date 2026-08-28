@@ -7,7 +7,7 @@ Também expõe um dashboard Streamlit para consulta histórica.
 
 ## Repositório
 - **GitHub:** https://github.com/olavoliqi/cvm-monitor
-- **Clone local:** `C:/Users/Olavo/cvm-monitor`
+- **Clone local:** `C:/Users/Olavo Meyer/Claude Code files/cvm-monitor` (branch `master`)
 - **Deploy (dashboard):** https://cvm-monitor-irbqwb5qenqvuulsfgrtbh.streamlit.app/
 
 ## Estrutura de arquivos
@@ -41,16 +41,56 @@ GMAIL_REFRESH_TOKEN=...
 | `baixar_csvs()` | Baixa e descompacta o ZIP da CVM |
 | `filtrar_ofertas_res160()` | Filtra ofertas Resolução 160 por data |
 | `filtrar_ofertas_distribuicao()` | Filtra demais ofertas (ICVM 400/476) por data |
+| `limpar_texto()` | Normaliza espaços e trunca campos de texto livre da CVM |
 | `gerar_tabela_html()` | Gera tabela HTML com colunas configuráveis |
 | `gerar_email_html()` | Monta o corpo completo do e-mail em HTML |
 | `enviar_email()` | Envia via Gmail API (OAuth2) |
 | `main()` | Orquestra tudo |
 
-## Para mudar o conteúdo do e-mail
-- **Colunas exibidas:** editar as listas de tuplas `(coluna_csv, label)` dentro de `gerar_email_html()`
-- **Layout/estilo:** editar os `style=` inline dentro de `gerar_tabela_html()` e `gerar_email_html()`
-- **Assunto:** editar a variável `assunto` em `main()`
-- **Texto introdutório/rodapé:** editar o HTML em `gerar_email_html()`
+## Layout do e-mail (duas linhas por oferta)
+
+Cada oferta ocupa **duas linhas** na tabela:
+
+1. **Linha principal** — campos curtos, definidos em `COLS_RES160` / `COLS_DIST`.
+2. **Linha de detalhe** (colspan, fundo cinza) — campos descritivos e
+   prestadores, definidos em `DET_RES160` / `DET_DIST`, rotulados em azul Liqi.
+
+Esse desenho existe porque a Resolução 160 traz 20+ campos relevantes: em
+colunas de verdade a tabela estouraria a largura de qualquer cliente de e-mail.
+Campos vazios na base da CVM são omitidos da linha de detalhe (não aparece "—").
+
+### Para mudar o conteúdo do e-mail
+- **Colunas da linha principal:** editar `COLS_RES160` / `COLS_DIST`
+- **Campos da linha de detalhe:** editar `DET_RES160` / `DET_DIST`
+- **Formatação de célula:** `formatar_celula()` — decide entre texto longo
+  truncado (`CAMPOS_LONGOS`), moeda (`CAMPOS_VALOR`) e S/N (`MAPA_SN`)
+- **Layout/estilo:** constantes `_TH`, `_TD`, `_TD_DET` e o HTML de
+  `gerar_email_html()`
+- **Assunto:** variável `assunto` em `main()`
+
+### Preview local sem enviar e-mail
+Rodar `gerar_email_html()` com um DataFrame filtrado e salvar em HTML. Sem as
+variáveis OAuth no ambiente, `enviar_email()` já não envia nada — só imprime.
+
+## ⚠️ Campos de texto livre (devedores, lastro, destinação, garantias)
+As colunas `Identificacao_devedores_coobrigados`, `Descricao_lastro`,
+`Destinacao_recursos`, `Descricao_garantias` e `Ativos_alvo` existem **apenas**
+em `oferta_resolucao_160.csv`. O `oferta_distribuicao.csv` (ICVM 400/476) **não
+tem** esses campos, nem público-alvo, nem regime de distribuição — não adicionar
+na tabela de "Demais Ofertas". O e-mail traz uma nota explícita nessa seção.
+
+São textos preenchidos livremente pelo emissor (média 150–260 caracteres, casos
+de 3.000+). Passam por `limpar_texto()`, que colapsa espaços/quebras e trunca em
+`MAX_CHARS_CAMPO_LONGO` (400). O texto integral fica no dashboard Streamlit.
+
+**Não subir muito o truncamento:** o Gmail corta ("mensagem truncada") o corpo
+acima de ~102 KB. Com 400 caracteres e 17 ofertas o e-mail fica em ~46 KB;
+a 1.500 caracteres passaria de 100 KB e seria cortado.
+
+### Campos de "regime"
+A CVM tem dois, e ambos vão no e-mail:
+- `Regime_distribuicao` — garantia firme vs. melhores esforços (linha principal)
+- `Regime_fiduciario` — S/N (linha de detalhe)
 
 ## Fonte de dados
 - URL: https://dados.cvm.gov.br/dados/OFERTA/DISTRIB/DADOS/oferta_distribuicao.zip
@@ -78,9 +118,11 @@ nos dois workflows e reboot do app no painel do Streamlit.
 
 ## Workflow para editar e publicar
 ```bash
-# Editar arquivos em C:/Users/Olavo/cvm-monitor
-git -C C:/Users/Olavo/cvm-monitor add <arquivo>
-git -C C:/Users/Olavo/cvm-monitor commit -m "mensagem"
-git -C C:/Users/Olavo/cvm-monitor push
+# Editar arquivos em "C:/Users/Olavo Meyer/Claude Code files/cvm-monitor"
+cd "C:/Users/Olavo Meyer/Claude Code files/cvm-monitor"
+git add cvm_monitor.py app.py CLAUDE.md   # nunca `git add -A` (o .venv/ mora aqui)
+git commit -m "mensagem"
+git pull --rebase
+git push
 ```
 O Streamlit Cloud faz redeploy automático após o push.
