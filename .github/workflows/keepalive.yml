@@ -1,20 +1,16 @@
 name: Keepalive (anti-inatividade)
 
-# O GitHub desativa workflows agendados (cron) após 60 dias sem
-# nenhum commit no repositório. Este workflow roda 2x por mês e,
-# quando o último commit está prestes a completar o limite, faz um
-# commit automático — resetando o contador para TODOS os workflows
-# (inclusive o cvm-daily.yml e este próprio). Só commita quando
-# necessário, então não polui o histórico.
+# O GitHub desativa workflows agendados (cron) de repositório público após
+# 60 dias sem commit. Este workflow roda nos dias 1 e 15 e, se o último
+# commit tiver mais de 45 dias, faz um commit vazio com o GITHUB_TOKEN,
+# zerando o contador para todos os workflows. Sem action de terceiro.
 
 on:
   schedule:
-    # 03:00 UTC nos dias 1 e 15 de cada mês
-    - cron: '0 3 1,15 * *'
-  workflow_dispatch: # permite execução manual
+    - cron: '0 3 1,15 * *'   # 03:00 UTC nos dias 1 e 15
+  workflow_dispatch:
 
 permissions:
-  actions: write
   contents: write
 
 jobs:
@@ -23,9 +19,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Manter workflows ativos
-        uses: gautamkrishnar/keepalive-workflow@v2
-        with:
-          # Faz o commit de manutenção se o último commit tiver
-          # mais de 45 dias (folga antes do limite de 60 do GitHub).
-          time_elapsed: '45'
+      - name: Commit vazio se o último commit tiver mais de 45 dias
+        run: |
+          ultimo=$(git log -1 --format=%ct)
+          agora=$(date +%s)
+          dias=$(( (agora - ultimo) / 86400 ))
+          echo "Último commit há $dias dias."
+          if [ "$dias" -lt 45 ]; then
+            echo "Nada a fazer."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "keepalive: mantém os crons ativos (último commit há $dias dias)"
+          git push
+          echo "Commit vazio enviado."

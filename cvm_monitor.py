@@ -62,6 +62,14 @@ FERIADOS_BR = {
 }
 
 
+# Quem recebe o e-mail diário. Alterar aqui e só aqui.
+DESTINATARIOS = [
+    "olavo@liqi.com.br",
+    "daniel@liqi.com.br",
+    "bernardo@liqi.com.br",
+    "guilherme.acciardi@liqi.com.br",
+]
+
 def dia_util_anterior(ref: date = None) -> date:
     """Retorna o dia útil anterior à data de referência."""
     if ref is None:
@@ -462,7 +470,7 @@ def enviar_email(assunto: str, html: str):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = assunto
     msg["From"] = gmail_addr
-    msg["To"] = "olavo@liqi.com.br, flavio.altimari@liqi.com.br"
+    msg["To"] = ", ".join(DESTINATARIOS)
     msg.attach(MIMEText(html, "html"))
 
     raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode()

@@ -7,7 +7,7 @@ Também expõe um dashboard Streamlit para consulta histórica.
 
 ## Repositório
 - **GitHub:** https://github.com/olavoliqi/cvm-monitor
-- **Clone local:** `C:/Users/Olavo Meyer/Claude Code files/cvm-monitor` (branch `master`)
+- **Clone local:** `C:/Users/Olavo Meyer/Claude Code files/liqi/cvm-monitor` (branch `master`)
 - **Deploy (dashboard):** https://cvm-monitor-irbqwb5qenqvuulsfgrtbh.streamlit.app/
 
 ## Estrutura de arquivos
@@ -21,7 +21,7 @@ requirements.txt # Dependências Python: requests, pandas, streamlit==1.41.0
 
 ## Variáveis de ambiente (.env / Secrets do Codespace)
 ```
-GMAIL_ADDRESS=olavo@liqi.com.br, flavio.altimari@liqi.com.br
+GMAIL_ADDRESS=olavo@liqi.com.br   # remetente (From)
 GMAIL_CLIENT_ID=...
 GMAIL_CLIENT_SECRET=...
 GMAIL_REFRESH_TOKEN=...
@@ -29,10 +29,14 @@ GMAIL_REFRESH_TOKEN=...
 
 ## Emails cadastrados para envio diário
 - olavo@liqi.com.br
-- flavio.altimari@liqi.com.br
+- daniel@liqi.com.br
+- bernardo@liqi.com.br
+- guilherme.acciardi@liqi.com.br
 
-> Para adicionar/remover destinatários: editar `GMAIL_ADDRESS` no `.env` / Secrets do Codespace.
-> O campo `To` do e-mail está hardcoded em `enviar_email()` — atualizar junto se necessário.
+> Para adicionar/remover destinatários: editar a lista `DESTINATARIOS` no
+> topo de `cvm_monitor.py` e fazer push. O secret `GMAIL_ADDRESS` é só o
+> remetente (From), não a lista de destinatários.
+> Flávio foi retirado da lista em 07/10/2026 a pedido do Olavo.
 
 ## Funções principais em cvm_monitor.py
 | Função | O que faz |
@@ -116,10 +120,18 @@ Streamlit também dorme. Se precisar reativar: `gh api -X PATCH
 repos/olavoliqi/cvm-monitor -f archived=false`, depois `gh workflow enable`
 nos dois workflows e reboot do app no painel do Streamlit.
 
+## ⚠️ Keepalive (regra dos 60 dias)
+Repo público: o GitHub desativa os crons após 60 dias sem commit. O
+`keepalive.yml` roda nos dias 1 e 15 e faz um commit vazio com o
+GITHUB_TOKEN quando o último commit tem mais de 45 dias. Não usa action de
+terceiro: a `gautamkrishnar/keepalive-workflow` foi bloqueada pelo GitHub
+(TOS) em abril de 2025 e por isso o keepalive antigo falhou em toda execução
+entre ago e out/2026. Conferir com `gh run list --workflow=keepalive.yml`.
+
 ## Workflow para editar e publicar
 ```bash
-# Editar arquivos em "C:/Users/Olavo Meyer/Claude Code files/cvm-monitor"
-cd "C:/Users/Olavo Meyer/Claude Code files/cvm-monitor"
+# Editar arquivos em "C:/Users/Olavo Meyer/Claude Code files/liqi/cvm-monitor"
+cd "C:/Users/Olavo Meyer/Claude Code files/liqi/cvm-monitor"
 git add cvm_monitor.py app.py CLAUDE.md   # nunca `git add -A` (o .venv/ mora aqui)
 git commit -m "mensagem"
 git pull --rebase
