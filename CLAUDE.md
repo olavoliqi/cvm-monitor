@@ -123,7 +123,7 @@ nos dois workflows e reboot do app no painel do Streamlit.
 ## ⚠️ Keepalive (regra dos 60 dias)
 Repo público: o GitHub desativa os crons após 60 dias sem commit. O
 `keepalive.yml` roda nos dias 1 e 15 e faz um commit vazio com o
-GITHUB_TOKEN quando o último commit tem mais de 45 dias. Não usa action de
+GITHUB_TOKEN quando o último commit tem mais de 30 dias. Não usa action de
 terceiro: a `gautamkrishnar/keepalive-workflow` foi bloqueada pelo GitHub
 (TOS) em abril de 2025 e por isso o keepalive antigo falhou em toda execução
 entre ago e out/2026. Conferir com `gh run list --workflow=keepalive.yml`.

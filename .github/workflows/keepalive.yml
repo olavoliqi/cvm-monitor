@@ -2,7 +2,7 @@ name: Keepalive (anti-inatividade)
 
 # O GitHub desativa workflows agendados (cron) de repositório público após
 # 60 dias sem commit. Este workflow roda nos dias 1 e 15 e, se o último
-# commit tiver mais de 45 dias, faz um commit vazio com o GITHUB_TOKEN,
+# commit tiver mais de 30 dias, faz um commit vazio com o GITHUB_TOKEN,
 # zerando o contador para todos os workflows. Sem action de terceiro.
 
 on:
@@ -19,13 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Commit vazio se o último commit tiver mais de 45 dias
+      - name: Commit vazio se o último commit tiver mais de 30 dias
         run: |
           ultimo=$(git log -1 --format=%ct)
           agora=$(date +%s)
           dias=$(( (agora - ultimo) / 86400 ))
           echo "Último commit há $dias dias."
-          if [ "$dias" -lt 45 ]; then
+          if [ "$dias" -lt 30 ]; then
             echo "Nada a fazer."
             exit 0
           fi
